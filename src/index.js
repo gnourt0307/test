@@ -1,31 +1,40 @@
-const express = require("express")
-const bodyParser = require("body-parser")
-const createError = require("http-errors")
+const express = require("express");
+const bodyParser = require("body-parser");
+const createError = require("http-errors");
+const cookieParser = require("cookie-parser");
+const pool = require("../database/database");
+const bcrypt = require("bcryptjs");
+const jwt = require("jsonwebtoken");
+const dotenv = require("dotenv");
+const cors = require("cors");
+const requireAuth = require("../middleware/authmiddleware");
+const loginRoute = require("./controllers/login-controller");
+const logoutRoute = require("./controllers/logout-controller");
 
-const demoRouter = require("./routes/demo-routes")
-
-const app = express()
-
+dotenv.config();
+const app = express();
+app.use(cors()); // Allow frontend requests
 app.use(
-	bodyParser.urlencoded({
-		extended: true,
-	})
-)
+  bodyParser.urlencoded({
+    extended: true,
+  })
+);
+app.use(bodyParser.json());
+app.use(cookieParser());
 
-app.use("/api/demo", demoRouter)
+pool.query("SELECT NOW()", (err, res) => {
+  if (err) console.error("Database connection error:", err);
+  else console.log("Connected to PostgreSQL at:", res.rows[0].now);
+});
 
-app.use(function (req, res, next) {
-	return next(createError(404, "Path not found"))
-})
+app.use("/login", logoutRoute);
+app.use("/logout", loginRoute);
 
-app.use((err, req, res, next) => {
-	console.error(err.stack)
-	res.status(err.status || 500).json({
-		message: err.message || "Internal Server Error",
-		code: err.status || 500,
-	})
-})
+app.get("/admin", requireAuth, (req, res) => {
+  res.json({ message: "OK" });
+});
 
-app.listen(3000, () => {
-	console.log("Server is running on port 3000")
-})
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(`Server is running on port ${PORT}`);
+});
